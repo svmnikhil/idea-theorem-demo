@@ -1,10 +1,17 @@
 import './App.css';
+import Banner from './components/Banner';
+import RegistrationForm from './components/RegistrationForm';
 
 function App() {
+
   return (
-    <div>
-      
-    </div>
+    <>
+      <Banner />
+      <div className='flex justify-center items-center md:min-h-[80vh]'>
+        <RegistrationForm />
+      </div>
+    </>
+    
   );
 }
 
