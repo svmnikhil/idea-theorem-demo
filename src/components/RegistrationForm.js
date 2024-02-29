@@ -91,7 +91,9 @@ export default function RegistrationForm() {
                 }
                 break;
             case 'confirm_password':
-                if(value !== form.password){
+                if (!value.trim()) {
+                    error = 'Sorry, password cannot be empty. Please try again.';
+                } else if(value !== form.password){
                     error = 'Sorry, these passwords do not match. Please try again.';
                 } else {
                     error = '';
@@ -132,21 +134,22 @@ export default function RegistrationForm() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        const dobError = formValidate("date_of_birth", form.date_of_birth);
-        if (dobError) {
-            setErrors(prevErrors => ({
-                ...prevErrors,
-                date_of_birth: dobError
-            }));
+        let newErrors = {};
+        let isValid = true; // Flag to track overall form validity
+
+        Object.keys(form).forEach(fieldName => {
+            const error = formValidate(fieldName, form[fieldName]);
+            if (error) {
+                newErrors[fieldName] = error;
+                isValid = false;
+            }
+        });
+
+        setErrors(newErrors);
+
+        if (!isValid) {
             setSubmitSuccess(false);
             setSubmitMessage("Please correct the errors before submitting.");
-            return;
-        }
-        const hasErrors = Object.values(errors).some(error => error !== '');
-
-        if (hasErrors) {
-            setSubmitSuccess(false);
-            setSubmitMessage("There was an error creating the account.");
             return;
         }
 
@@ -190,7 +193,7 @@ export default function RegistrationForm() {
     }
 
     return (
-        <div className="flex flex-col justify-between md:justify-center w-full md:w-1/3 h-screen mt-4 md:mt-0 min-h-screen">
+        <div className="flex flex-col justify-between md:justify-center w-full md:w-1/3 mt-4 md:mt-0 h-screen">
             <div>
                 <label className="block pl-3 md:pl-0 pb-2 font-semibold text-gray-700 text-lg">Create User Account</label>
                 <form className="relative border-t md:border md:border-gray-50 md:shadow-2xl md:shadow-gray-300 w-full bg-white px-3 md:px-6 md:pt-4 pb-6 md:rounded-md" onSubmit={handleSubmit}>  
@@ -261,7 +264,7 @@ export default function RegistrationForm() {
                     />
                 </form>
             </div>
-            <div className="fixed inset-x-0 bottom-0 md:relative md:px-0 md:py-0 md:bottom-auto">
+            <div className="fixed inset-x-0 bottom-0 md:relative md:px-0 md:-pt-2 md:bottom-2">
                 <SubmitComponent 
                     submit={handleSubmit} 
                     cancel={handleCancel}
