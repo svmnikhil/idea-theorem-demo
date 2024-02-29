@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import InputComponent from "./InputComponent";
 import BirthDateComponent from "./BirthDateComponent";
 import SubmitComponent from "./SubmitComponent";
@@ -11,7 +11,7 @@ export default function RegistrationForm() {
         full_name: "",
         contact_number: "",
         email: "",
-        date_of_birth: "01011999",
+        date_of_birth: "",
         password: "",
         confirm_password: ""
     };
@@ -26,9 +26,12 @@ export default function RegistrationForm() {
     }
 
     const [form, setForm] = useState(initialFormState);
+    const [resetDate, setResetDate] = useState(false);
     const [errors, setErrors] = useState(initialErrorState);
     const [submitSuccess, setSubmitSuccess] = useState(null);
-    const [submitMessage, setSubmitMessage] = useState("There was an error creating the account.");
+    const [submitMessage, setSubmitMessage] = useState("");
+    const [opacity, setOpacity] = useState(1); // New state for controlling opacity
+
 
     const formValidate = useCallback((name, value) => {
         let error = '';
@@ -53,7 +56,19 @@ export default function RegistrationForm() {
                     error = '';
                 }
                 break;
-            // add day, month, year errors
+            case 'date_of_birth':
+                const parts = value.split('-');
+                const [day, month, year] = parts.map(part => part.trim());
+                if (!day) {
+                    error = 'Sorry, the birthdate must include a day. Please try again.';
+                } else if (!month) {
+                error = 'Sorry, the birthdate must include a month. Please try again.';
+                } else if (!year) {
+                error = 'Sorry, the birthdate must include a year. Please try again.';
+                } else {
+                    error = '';
+                }
+                break;
             case 'email':
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -105,17 +120,28 @@ export default function RegistrationForm() {
             ...prevValues,
             [name]: value
         }));
-
+        // console.log(event);
+        
         setErrors((prevErrors) => ({
             ...prevErrors,
             [name]: error
         }));
-        //console.log(error);
+        // console.log(error);
     };
 
+
     const handleSubmit = async (event) => {
-        //only works if errors are cleared
         event.preventDefault();
+        const dobError = formValidate("date_of_birth", form.date_of_birth);
+        if (dobError) {
+            setErrors(prevErrors => ({
+                ...prevErrors,
+                date_of_birth: dobError
+            }));
+            setSubmitSuccess(false);
+            setSubmitMessage("Please correct the errors before submitting.");
+            return;
+        }
         const hasErrors = Object.values(errors).some(error => error !== '');
 
         if (hasErrors) {
@@ -137,10 +163,12 @@ export default function RegistrationForm() {
                 handleCancel();
                 setSubmitSuccess(true);
                 setSubmitMessage("User account successfully created.");
+                setTimeout(() => setOpacity(0), 1000);
             } else {
                 const error = await response.text();
                 setSubmitSuccess(false);
                 setSubmitMessage("There was an error creating the account.");
+                setTimeout(() => setOpacity(0), 1000);
                 throw new Error(error);
             }
         } catch (error) {
@@ -148,83 +176,97 @@ export default function RegistrationForm() {
         }
     }
 
+    useEffect(() => {
+        if (submitSuccess !== null) {
+            setOpacity(1);
+            setTimeout(() => setSubmitSuccess(null), 2000);
+        }
+    }, [submitSuccess]);
+
     const handleCancel = (event) => {
         setForm(initialFormState);
+        setResetDate(prev => !prev);
+        setErrors(initialErrorState);
     }
 
     return (
-        <div className="flex flex-col justify-start md:justify-center w-full md:w-auto h-screen md:h-auto mt-4 md:mt-12">
-            <label className="block pl-3 md:pl-0 pb-2 font-semibold text-gray-700 text-lg">Create User Account</label>
-            <form className="relative md:border md:border-gray-50 md:shadow-2xl md:shadow-gray-300 w-full bg-white px-8 pt-4 md:pt-4 pb-6 md:rounded-md" onSubmit={handleSubmit}>  
-                {submitSuccess !== null && (
-                    <div 
-                    className={
-                        `absolute flex flex-row justify-center items-center inset-x-0 -bottom-20 md:top-1 md:left-auto md:bottom-auto 
-                        ${submitSuccess ? 'bg-green-100 md:-right-72' : 'bg-red-200 md:-right-[345px]'} 
-                        pl-3 pr-7 py-4 rounded-md md:rounded-md`}
-                    >
-                        {submitSuccess ? <CheckCircleIcon className="h-8 w-8 mx-3"/> : <XCircleIcon className="h-8 w-8 mx-3" />}
-                        {submitMessage}
-                    </div>
-                )}
-                <InputComponent 
-                    label="Full Name"
-                    type="text"
-                    name="full_name"
-                    value={form.full_name}
-                    onChange={handleInputChange}
-                    onBlur={handleValidationOnBlur}
-                    error={errors.full_name}
-                    placeholder="Full Name"
+        <div className="flex flex-col justify-between md:justify-center w-full md:w-1/3 h-screen mt-4 md:mt-0 min-h-screen">
+            <div>
+                <label className="block pl-3 md:pl-0 pb-2 font-semibold text-gray-700 text-lg">Create User Account</label>
+                <form className="relative border-t md:border md:border-gray-50 md:shadow-2xl md:shadow-gray-300 w-full bg-white px-3 md:px-6 md:pt-4 pb-6 md:rounded-md" onSubmit={handleSubmit}>  
+                    {submitSuccess !== null && (
+                        <div 
+                            className={
+                                `absolute transform -bottom-5 md:bottom-full -translate-y-0 md:absolute inset-x-0 md:top-0 md:left-auto md:translate-x-64 md:translate-y-0 
+                                ${submitSuccess ? 'bg-green-100' : 'bg-red-200'} 
+                                px-3 py-4 md:py-7 rounded-md text-center md:text-left flex items-center justify-center md:justify-start z-10 transition-opacity duration-2000`
+                            }
+                            style={{ opacity: opacity, transition: 'opacity 2s ease-in-out' }}
+                        >
+                            {submitSuccess ? <CheckCircleIcon className="h-6 w-6"/> : <XCircleIcon className="h-6 w-6" />}
+                            <span className="ml-2">{submitMessage}</span>
+                        </div>
+                    )}
+                    <InputComponent 
+                        label="Full Name"
+                        type="text"
+                        name="full_name"
+                        value={form.full_name}
+                        onChange={handleInputChange}
+                        onBlur={handleValidationOnBlur}
+                        error={errors.full_name}
+                        placeholder="Full Name"
+                    />
+                    <InputComponent 
+                        label="Contact Number"
+                        type="tel"
+                        name="contact_number"
+                        value={form.contact_number}
+                        onChange={handleInputChange}
+                        onBlur={handleValidationOnBlur}
+                        error={errors.contact_number}
+                        placeholder="(XXX)-XXX-XXXX"
+                        pattern="[0-9]*"
+                    />
+                    <BirthDateComponent setDate={handleInputChange} error={errors.date_of_birth} reset={resetDate}/>
+                    <InputComponent 
+                        label="Email Address"
+                        type="email"
+                        name="email"
+                        value={form.email}
+                        onChange={handleInputChange}
+                        onBlur={handleValidationOnBlur}
+                        error={errors.email}
+                        placeholder="Email Address"
+                    />
+                    <InputComponent 
+                        label="Password"
+                        type="password"
+                        name="password"
+                        value={form.password}
+                        onChange={handleInputChange}
+                        onBlur={handleValidationOnBlur}
+                        error={errors.password}
+                        placeholder="Create Password"
+                    />
+                    <InputComponent 
+                        label="Confirm Password"
+                        type="password"
+                        name="confirm_password"
+                        value={form.confirm_password}
+                        onChange={handleInputChange}
+                        onBlur={handleValidationOnBlur}
+                        error={errors.confirm_password}
+                        placeholder="Confirm Password"
+                    />
+                </form>
+            </div>
+            <div className="fixed inset-x-0 bottom-0 md:relative md:px-0 md:py-0 md:bottom-auto">
+                <SubmitComponent 
+                    submit={handleSubmit} 
+                    cancel={handleCancel}
                 />
-                <InputComponent 
-                    label="Contact Number"
-                    type="tel"
-                    name="contact_number"
-                    value={form.contact_number}
-                    onChange={handleInputChange}
-                    onBlur={handleValidationOnBlur}
-                    error={errors.contact_number}
-                    placeholder="(XXX)-XXX-XXXX"
-                    pattern="[0-9]*"
-                />
-                <BirthDateComponent />
-                <InputComponent 
-                    label="Email Address"
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleInputChange}
-                    onBlur={handleValidationOnBlur}
-                    error={errors.email}
-                    placeholder="Email Address"
-                />
-                <InputComponent 
-                    label="Password"
-                    type="text"
-                    name="password"
-                    value={form.password}
-                    onChange={handleInputChange}
-                    onBlur={handleValidationOnBlur}
-                    error={errors.password}
-                    placeholder="Password"
-                />
-                <InputComponent 
-                    label="Confirm Password"
-                    type="text"
-                    name="confirm_password"
-                    value={form.confirm_password}
-                    onChange={handleInputChange}
-                    onBlur={handleValidationOnBlur}
-                    error={errors.confirm_password}
-                    placeholder="Password"
-                />
-            </form>             
-            <SubmitComponent 
-                submit={handleSubmit} 
-                cancel={handleCancel}
-                className="fixed bottom-auto left-0 right-0 bg-white md:relative md:bg-transparent md:border-t-0"
-                />
+            </div>
         </div>
     )
 }
